@@ -1,0 +1,435 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "BookHive — Digital Books & Audio Marketplace",
+    "description": "BookHive is a marketplace for buying, selling and sharing digital books (PDF) and audiobooks. This API covers user authentication, catalog management, file uploads (audio/pdf), purchases, subscriptions and reviews.",
+    "termsOfService": "https://bookhive.example.com/terms",
+    "contact": {
+      "name": "BookHive API Team",
+      "email": "api@bookhive.example.com",
+      "url": "https://bookhive.example.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    },
+    "version": "2025-11-13"
+  },
+  "servers": [
+    { "url": "http://localhost:8000/v1", "description": "Local dev" },
+    { "url": "https://api.bookhive.com/v1", "description": "Production" }
+  ],
+  "tags": [
+    { "name": "auth", "description": "Authentication and token management" },
+    { "name": "users", "description": "User profiles and account management" },
+    { "name": "books", "description": "Book catalogue, metadata and file uploads" },
+    { "name": "purchases", "description": "Purchases, receipts and orders" },
+    { "name": "reviews", "description": "Reviews and ratings" },
+    { "name": "categories", "description": "Book categories and tags" },
+    { "name": "search", "description": "Search and discovery" },
+    { "name": "subscriptions", "description": "Subscription plans and billing" },
+    { "name": "webhooks", "description": "Payment & marketplace webhooks" }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Register new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["auth"],
+        "summary": "Login and receive JWT token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authenticated",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/AuthResponse" } }
+            }
+          },
+          "401": { "description": "Invalid credentials", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+
+    "/users/{userId}": {
+      "get": {
+        "tags": ["users"],
+        "summary": "Get user profile by ID",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "put": {
+        "tags": ["users"],
+        "summary": "Update user profile (partial)",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdate" } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "delete": {
+        "tags": ["users"],
+        "summary": "Delete user (admin or owner)",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/books": {
+      "get": {
+        "tags": ["books"],
+        "summary": "List books (paginated)",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Full-text query" },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "author", "in": "query", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": { "200": { "description": "List", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BookList" } } } } }
+      },
+      "post": {
+        "tags": ["books"],
+        "summary": "Create a new book metadata (admin/creator)",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BookCreate" } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/books/{bookId}": {
+      "get": {
+        "tags": ["books"],
+        "summary": "Get book by ID (metadata + file info)",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } } }
+      },
+      "put": {
+        "tags": ["books"],
+        "summary": "Update book metadata",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BookUpdate" } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Book" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      },
+      "delete": {
+        "tags": ["books"],
+        "summary": "Delete book (owner or admin)",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/books/{bookId}/files": {
+      "post": {
+        "tags": ["books"],
+        "summary": "Upload file for a book (pdf or audio). Returns file metadata & signed URL",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "type": { "type": "string", "enum": ["pdf", "audio"] }
+                },
+                "required": ["file", "type"]
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "File uploaded", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/FileMeta" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/books/{bookId}/purchase": {
+      "post": {
+        "tags": ["purchases"],
+        "summary": "Purchase a book (one-off) — creates order & returns payment intent",
+        "parameters": [{ "name": "bookId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PurchaseRequest" } } } },
+        "responses": { "200": { "description": "Payment created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PurchaseResponse" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/purchases/{purchaseId}": {
+      "get": {
+        "tags": ["purchases"],
+        "summary": "Get purchase by ID (receipt)",
+        "parameters": [{ "name": "purchaseId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Purchase" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/reviews": {
+      "post": {
+        "tags": ["reviews"],
+        "summary": "Create a review for a book",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ReviewCreate" } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Review" } } } } },
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+
+    "/categories": {
+      "get": {
+        "tags": ["categories"],
+        "summary": "List categories",
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } } } } } }
+      }
+    },
+
+    "/search": {
+      "get": {
+        "tags": ["search"],
+        "summary": "Search books by query and filters",
+        "parameters": [
+          { "name": "q", "in": "query", "schema": { "type": "string" } },
+          { "name": "author", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "format", "in": "query", "schema": { "type": "string", "enum": ["pdf","audio","both"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": { "200": { "description": "Search results", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BookList" } } } } }
+      }
+    },
+
+    "/subscriptions/plans": {
+      "get": {
+        "tags": ["subscriptions"],
+        "summary": "List subscription plans",
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SubscriptionPlan" } } } } } }
+      }
+    },
+
+    "/webhooks/payment": {
+      "post": {
+        "tags": ["webhooks"],
+        "summary": "Payment provider webhook (e.g. stripe) — receives events",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "204": { "description": "Received" } }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "apiKey": { "type": "apiKey", "in": "header", "name": "x-api-key" }
+    },
+    "schemas": {
+      "RegisterRequest": {
+        "type": "object",
+        "required": ["email","password","displayName"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "alice@example.com" },
+          "password": { "type": "string", "minLength": 8 },
+          "displayName": { "type": "string", "example": "Alice Reader" },
+          "bio": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["email","password"],
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": { "type": "string" },
+          "tokenType": { "type": "string", "example": "Bearer" },
+          "expiresIn": { "type": "integer", "example": 3600 }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "usr_01F..." },
+          "email": { "type": "string", "format": "email" },
+          "displayName": { "type": "string" },
+          "bio": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "UserUpdate": {
+        "type": "object",
+        "properties": {
+          "displayName": { "type": "string" },
+          "bio": { "type": "string" }
+        }
+      },
+      "Book": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "subtitle": { "type": "string" },
+          "description": { "type": "string" },
+          "authors": { "type": "array", "items": { "type": "string" } },
+          "price": { "type": "number", "format": "double" },
+          "currency": { "type": "string", "example": "USD" },
+          "publishedAt": { "type": "string", "format": "date" },
+          "language": { "type": "string", "example": "en" },
+          "categories": { "type": "array", "items": { "$ref": "#/components/schemas/Category" } },
+          "coverUrl": { "type": "string", "format": "uri" },
+          "files": { "type": "array", "items": { "$ref": "#/components/schemas/FileMeta" } },
+          "createdBy": { "$ref": "#/components/schemas/User" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "BookCreate": {
+        "type": "object",
+        "required": ["title","authors","price","currency"],
+        "properties": {
+          "title": { "type": "string" },
+          "subtitle": { "type": "string" },
+          "description": { "type": "string" },
+          "authors": { "type": "array", "items": { "type": "string" } },
+          "price": { "type": "number" },
+          "currency": { "type": "string" },
+          "publishedAt": { "type": "string", "format": "date" },
+          "language": { "type": "string" },
+          "categories": { "type": "array", "items": { "type": "string" } },
+          "coverUrl": { "type": "string", "format": "uri" }
+        }
+      },
+      "BookUpdate": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "subtitle": { "type": "string" },
+          "description": { "type": "string" },
+          "price": { "type": "number" },
+          "categories": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "FileMeta": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "fileName": { "type": "string" },
+          "fileType": { "type": "string", "enum": ["pdf","audio"] },
+          "size": { "type": "integer" },
+          "url": { "type": "string", "format": "uri" },
+          "uploadedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PurchaseRequest": {
+        "type": "object",
+        "required": ["paymentMethod"],
+        "properties": {
+          "paymentMethod": { "type": "string", "enum": ["card","wallet","stripe","paypal"] },
+          "coupon": { "type": "string" }
+        }
+      },
+      "PurchaseResponse": {
+        "type": "object",
+        "properties": {
+          "purchaseId": { "type": "string" },
+          "status": { "type": "string" },
+          "paymentIntent": { "type": "object" }
+        }
+      },
+      "Purchase": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "bookId": { "type": "string" },
+          "userId": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "status": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ReviewCreate": {
+        "type": "object",
+        "required": ["bookId","rating","text"],
+        "properties": {
+          "bookId": { "type": "string" },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "text": { "type": "string" }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "bookId": { "type": "string" },
+          "userId": { "type": "string" },
+          "rating": { "type": "integer" },
+          "text": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "slug": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "BookList": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Book" } }
+        }
+      },
+      "SubscriptionPlan": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "price": { "type": "number" },
+          "currency": { "type": "string" },
+          "monthly": { "type": "boolean" },
+          "benefits": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "integer" },
+          "message": { "type": "string" },
+          "details": { "type": "object" }
+        }
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }]
+}
