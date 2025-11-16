@@ -70,21 +70,18 @@ module.exports = function createServer(options = {}) {
   });
 
   // ---------- Start Server ----------
-  server = app.listen(opts.port, opts.host, err => {
-    if (err) {
-      logger.error("Failed to start server:", err);
-      return;
-    }
+server = app.listen(opts.port, opts.host, err => {
+  if (err) {
+    console.error("🔥 SERVER START ERROR:", err);
+    logger.error(err);
+    return;
+  }
 
-    if (isClosing) {
-      logger.error("Server closed before fully starting.");
-      return;
-    }
+  isStarted = true;
+  const addr = server.address();
+  logger.info(`🚀 Server started on http://${opts.host}:${addr.port}`);
+});
 
-    isStarted = true;
-    const addr = server.address();
-    logger.info(`🚀 Server started on http://${opts.host}:${addr.port}`);
-  });
 
   return app;
 };
