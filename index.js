@@ -7,6 +7,7 @@ const ejs = require('ejs');
 const pino = require('pino');
 const pinoHttp = require('pino-http');
 const initDB = require('./db/init');
+const port = process.env.PORT;
 
 initDB();
 
@@ -70,17 +71,9 @@ module.exports = function createServer(options = {}) {
   });
 
   // ---------- Start Server ----------
-server = app.listen(opts.port, opts.host, err => {
-  if (err) {
-    console.error("🔥 SERVER START ERROR:", err);
-    logger.error(err);
-    return;
-  }
-
-  isStarted = true;
-  const addr = server.address();
-  logger.info(`🚀 Server started on http://${opts.host}:${addr.port}`);
-});
+  server = app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
+  });
 
 
   return app;
